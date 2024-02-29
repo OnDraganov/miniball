@@ -43,8 +43,8 @@ def get_circumsphere(S, check_circumsphere_solutions):
 
     U = S[1:] - S[0]
     B = numpy.sqrt(numpy.square(U).sum(axis=1))
-    U /= B[:, None]
-    B /= 2
+    U = U / B[:, None]
+    B = B / 2
     A = numpy.inner(U, U)
     x, *_ = numpy.linalg.lstsq(A, B, rcond=None)
     if check_circumsphere_solutions:
@@ -52,7 +52,7 @@ def get_circumsphere(S, check_circumsphere_solutions):
             raise numpy.linalg.LinAlgError('Linear equation has no solution.')
     C = numpy.dot(x, U)
     r2 = numpy.square(C).sum()
-    C += S[0]
+    C = C + S[0]
     return C, r2
 
 
