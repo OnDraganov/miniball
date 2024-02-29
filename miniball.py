@@ -23,10 +23,10 @@ import numpy
 
 
 __author__ = "Alexandre Devert <marmakoide@hotmail.fr>"
-__version__ = "1.2.1"
+__version__ = "1.2.2"
 
 
-def get_circumsphere(S):
+def get_circumsphere(S, check_circumsphere_solutions):
     """
     Computes the circumsphere of a set of points
 
@@ -47,15 +47,16 @@ def get_circumsphere(S):
     B /= 2
     A = numpy.inner(U, U)
     x, *_ = numpy.linalg.lstsq(A, B, rcond=None)
-    if not numpy.isclose(((A @ x - B) ** 2).sum(), 0):
-        raise numpy.linalg.LinAlgError('Linear equation has no solution.')
+    if check_circumsphere_solutions:
+        if not numpy.isclose(((A @ x - B) ** 2).sum(), 0):
+            raise numpy.linalg.LinAlgError('Linear equation has no solution.')
     C = numpy.dot(x, U)
     r2 = numpy.square(C).sum()
     C += S[0]
     return C, r2
 
 
-def get_bounding_ball(S, epsilon=1e-7, rng=numpy.random.default_rng()):
+def get_bounding_ball(S, epsilon=1e-7, rng=numpy.random.default_rng(), check_circumsphere_solutions=True):
     """
     Computes the smallest bounding ball of a set of points
 
@@ -71,6 +72,9 @@ def get_bounding_ball(S, epsilon=1e-7, rng=numpy.random.default_rng()):
     rng : numpy.random.Generator
         Pseudo-random number generator used internally. Default is the default
         one provided by numpy.
+
+    check_circumsphere_solutions : bool
+        Run an isclose check on the solution produced by lstsq in get_circumsphere.
 
     Returns
     -------
@@ -90,9 +94,9 @@ def get_bounding_ball(S, epsilon=1e-7, rng=numpy.random.default_rng()):
             return numpy.zeros(S.shape[1]), 0.0
 
         if len(R) <= S.shape[1] + 1:
-            return get_circumsphere(S[R])
+            return get_circumsphere(S[R], check_circumsphere_solutions=check_circumsphere_solutions)
 
-        c, r2 = get_circumsphere(S[R[: S.shape[1] + 1]])
+        c, r2 = get_circumsphere(S[R[: S.shape[1] + 1]], check_circumsphere_solutions=check_circumsphere_solutions)
         if numpy.all(
             numpy.fabs(numpy.square(S[R] - c).sum(axis=1) - r2) < epsilon
         ):
