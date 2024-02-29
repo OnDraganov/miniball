@@ -25,6 +25,8 @@ import numpy
 __author__ = "Alexandre Devert <marmakoide@hotmail.fr>"
 __version__ = "1.2.1"
 
+from chromatic_tda.utils.timing import TimingUtils
+
 
 def get_circumsphere(S):
     """
@@ -40,18 +42,48 @@ def get_circumsphere(S):
     C, r2 : ((2) ndarray, float)
             The center and the squared radius of the circumsphere
     """
+    TimingUtils().start("Miniball :: Get Circumsphere")
 
+    TimingUtils().start("Miniball :: Get Circumsphere :: Define U, B, A")
+    TimingUtils().start("Miniball :: Get Circumsphere :: Define U, B, A :: U")
     U = S[1:] - S[0]
+    TimingUtils().stop("Miniball :: Get Circumsphere :: Define U, B, A :: U")
+    TimingUtils().start("Miniball :: Get Circumsphere :: Define U, B, A :: B")
     B = numpy.sqrt(numpy.square(U).sum(axis=1))
-    U /= B[:, None]
-    B /= 2
+    TimingUtils().stop("Miniball :: Get Circumsphere :: Define U, B, A :: B")
+    TimingUtils().start("Miniball :: Get Circumsphere :: Define U, B, A :: U2")
+    U = U / B[:, None]
+    TimingUtils().stop("Miniball :: Get Circumsphere :: Define U, B, A :: U2")
+    TimingUtils().start("Miniball :: Get Circumsphere :: Define U, B, A :: B2")
+    B = B / 2
+    TimingUtils().stop("Miniball :: Get Circumsphere :: Define U, B, A :: B2")
+    TimingUtils().start("Miniball :: Get Circumsphere :: Define U, B, A :: A")
     A = numpy.inner(U, U)
+    TimingUtils().stop("Miniball :: Get Circumsphere :: Define U, B, A :: A")
+    TimingUtils().stop("Miniball :: Get Circumsphere :: Define U, B, A")
+
+    TimingUtils().start("Miniball :: Get Circumsphere :: LstSq")
     x, *_ = numpy.linalg.lstsq(A, B, rcond=None)
-    if not numpy.isclose(((A @ x - B) ** 2).sum(), 0):
+    TimingUtils().stop("Miniball :: Get Circumsphere :: LstSq")
+
+    TimingUtils().start("Miniball :: Get Circumsphere :: Check Correctness")
+    if not numpy.allclose(A @ x, B):
         raise numpy.linalg.LinAlgError('Linear equation has no solution.')
+    TimingUtils().stop("Miniball :: Get Circumsphere :: Check Correctness")
+
+    TimingUtils().start("Miniball :: Get Circumsphere :: Compute C, r2")
+    TimingUtils().start("Miniball :: Get Circumsphere :: Compute C, r2 :: C")
     C = numpy.dot(x, U)
+    TimingUtils().stop("Miniball :: Get Circumsphere :: Compute C, r2 :: C")
+    TimingUtils().start("Miniball :: Get Circumsphere :: Compute C, r2 :: r2")
     r2 = numpy.square(C).sum()
-    C += S[0]
+    TimingUtils().stop("Miniball :: Get Circumsphere :: Compute C, r2 :: r2")
+    TimingUtils().start("Miniball :: Get Circumsphere :: Compute C, r2 :: C+")
+    C = C + S[0]
+    TimingUtils().stop("Miniball :: Get Circumsphere :: Compute C, r2 :: C+")
+    TimingUtils().stop("Miniball :: Get Circumsphere :: Compute C, r2")
+
+    TimingUtils().stop("Miniball :: Get Circumsphere")
     return C, r2
 
 
@@ -82,8 +114,11 @@ def get_bounding_ball(S, epsilon=1e-7, rng=numpy.random.default_rng()):
     # "Smallest enclosing disks (balls and ellipsoids)" Emo Welzl 1991
 
     def circle_contains(D, p):
+        TimingUtils().start("Miniball :: Circle Contains")
         c, r2 = D
-        return numpy.square(p - c).sum() <= r2
+        contains = numpy.square(p - c).sum() <= r2
+        TimingUtils().stop("Miniball :: Circle Contains")
+        return contains
 
     def get_boundary(R):
         if len(R) == 0:
@@ -108,13 +143,18 @@ def get_bounding_ball(S, epsilon=1e-7, rng=numpy.random.default_rng()):
             self.right = None
 
     def traverse(node):
+        TimingUtils().start("Miniball :: Traverse")
+
         stack = [node]
         while len(stack) > 0:
             node = stack.pop()
 
             if len(node.P) == 0 or len(node.R) >= S.shape[1] + 1:
+                TimingUtils().start("Miniball :: Traverse :: Case 1")
                 node.D = get_boundary(node.R)
+                TimingUtils().stop("Miniball :: Traverse :: Case 1")
             elif node.left is None:
+                TimingUtils().start("Miniball :: Traverse :: Case 2")
                 pivot_index = rng.integers(len(node.P))
                 node.pivot = node.P[pivot_index]
                 node.left = Node(
@@ -122,15 +162,22 @@ def get_bounding_ball(S, epsilon=1e-7, rng=numpy.random.default_rng()):
                     node.R
                 )
                 stack.extend((node, node.left))
+                TimingUtils().stop("Miniball :: Traverse :: Case 2")
             elif node.right is None:
+                TimingUtils().start("Miniball :: Traverse :: Case 3")
                 if circle_contains(node.left.D, S[node.pivot]):
                     node.D = node.left.D
                 else:
                     node.right = Node(node.left.P, node.R + [node.pivot])
                     stack.extend((node, node.right))
+                TimingUtils().stop("Miniball :: Traverse :: Case 3")
             else:
+                TimingUtils().start("Miniball :: Traverse :: Case 4")
                 node.D = node.right.D
                 node.left, node.right = None, None
+                TimingUtils().stop("Miniball :: Traverse :: Case 4")
+
+        TimingUtils().stop("Miniball :: Traverse")
 
     S = S.astype(float, copy=False)
     root = Node(list(range(S.shape[0])), [])
