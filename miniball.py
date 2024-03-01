@@ -18,15 +18,18 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+#
+#
+# Minor edits by Ondrej Draganov
+#
 
 import numpy
 
-
 __author__ = "Alexandre Devert <marmakoide@hotmail.fr>"
-__version__ = "1.2.2"
+__version__ = "1.2.3"
 
 
-def get_circumsphere(S, check_circumsphere_solutions):
+def get_circumsphere(S):
     """
     Computes the circumsphere of a set of points
 
@@ -42,21 +45,16 @@ def get_circumsphere(S, check_circumsphere_solutions):
     """
 
     U = S[1:] - S[0]
-    B = numpy.sqrt(numpy.square(U).sum(axis=1))
-    U = U / B[:, None]
-    B = B / 2
+    B = numpy.square(U).sum(axis=1) / 2
     A = numpy.inner(U, U)
-    x, *_ = numpy.linalg.lstsq(A, B, rcond=None)
-    if check_circumsphere_solutions:
-        if not numpy.isclose(((A @ x - B) ** 2).sum(), 0):
-            raise numpy.linalg.LinAlgError('Linear equation has no solution.')
+    x = numpy.linalg.solve(A, B)
     C = numpy.dot(x, U)
     r2 = numpy.square(C).sum()
     C = C + S[0]
     return C, r2
 
 
-def get_bounding_ball(S, epsilon=1e-7, rng=numpy.random.default_rng(), check_circumsphere_solutions=True):
+def get_bounding_ball(S, epsilon=1e-7, rng=numpy.random.default_rng()):
     """
     Computes the smallest bounding ball of a set of points
 
@@ -87,16 +85,17 @@ def get_bounding_ball(S, epsilon=1e-7, rng=numpy.random.default_rng(), check_cir
 
     def circle_contains(D, p):
         c, r2 = D
-        return numpy.square(p - c).sum() <= r2
+        distance = numpy.square(p - c).sum()
+        return distance <= r2 or numpy.isclose(distance, r2)
 
     def get_boundary(R):
         if len(R) == 0:
             return numpy.zeros(S.shape[1]), 0.0
 
         if len(R) <= S.shape[1] + 1:
-            return get_circumsphere(S[R], check_circumsphere_solutions=check_circumsphere_solutions)
+            return get_circumsphere(S[R])
 
-        c, r2 = get_circumsphere(S[R[: S.shape[1] + 1]], check_circumsphere_solutions=check_circumsphere_solutions)
+        c, r2 = get_circumsphere(S[R[: S.shape[1] + 1]])
         if numpy.all(
             numpy.fabs(numpy.square(S[R] - c).sum(axis=1) - r2) < epsilon
         ):
