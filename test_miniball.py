@@ -20,8 +20,8 @@
 # SOFTWARE.
 
 import numpy
-import miniball
 
+from chromatic_tda.algorithms.miniball import miniball
 
 def test_repeatability():
     # Check that we can have repeatable results when providing the RNG
